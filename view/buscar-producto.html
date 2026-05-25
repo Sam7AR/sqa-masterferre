@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registro de Producto</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/styles/main.css">
+    <style>
+        .modal {
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 60%;
+        }
+
+        .close-btn {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        }
+
+        .close-btn:hover,
+        .close-btn:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+        }
+
+        #modificarProductoFrame {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <nav class="container navbar navbar-expand-lg navbar-light">
+        <a class="navbar-brand" href="/main">
+            <img src="/images/logo.png" height="30" alt="Logo">
+        </a>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul id="enlaces" class="navbar-nav">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/main">Catálogo</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/buscar-producto">Productos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/buscar-usuario">Usuarios</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/registrar-productos">Registrar productos</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/compras" class="nav-link">Compras</a>
+                  </li>
+            </ul>
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="carrito"><i class="fas fa-shopping-cart"></i> Carrito</a>
+                </li>
+                <li class="nav-item btn btn-primary">
+            <a class="nav-link" href="/registrar-usuario">Registrar Usuario</a>
+          </li>
+            </ul>
+        </div>
+    </nav>
+
+    <form id="buscar-producto-form" class="container mt-3">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <label for="id" class="form-label col-md-3 font-weight-bold fs-5">Búsqueda por ID</label>
+                    <input type="text" class="form-control" id="id" name="id" placeholder="Buscar">
+                    
+                    <div class="input-group-append">
+                        <input class="btn btn-primary" type="submit" value="Buscar">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    <br>
+    
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+        <button class="btn btn-primary" type="button" onclick="window.location.href='registrar-productos'">Registrar producto</button>
+        <button class="btn btn-primary" type="button" onclick="window.location.href='registrar-producto-catalogo'">Agregar al catálogo</button>
+        </div>
+        <div class="col-md-6 align-self-end text-end">
+            <button class="btn btn-primary" type="button" id="modificarProductoBtn">Modificar producto</button>
+            <div id="modificarProductoFrame" class="modal col-6" style="display:none;">
+              <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <form id="modificarProductoForm" class="container col-md-8 offset-md-2 mt-5">
+                                    
+                    <div class="row mb-3">
+                        <div class="col-md-8 form-group">
+                            <label for="nombreProducto" class="form-label">Nombre:</label>
+                            <input type="text" id="nombreProducto" name="nombreProducto" class="form-control">
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <label for="idProducto" class="form-label">ID: </label>
+                            <h2 id="idProducto" class="h2"></h2>
+                        </div>
+                    </div>
+                
+                    <div class="row mb-3">
+                        <div class="col-md-8 form-group">
+                            <label for="categoriaProducto" class="form-label">Categoria:</label>
+                            <input type="text" id="categoriaProducto" name="categoriaProducto" class="form-control">
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <label for="precioProducto" class="form-label">Precio:</label>
+                            <input type="number" id="precioProducto" name="precioProducto" class="form-control">
+                        </div>
+                    </div>
+                
+                    <div class="row">
+                        <div class="col-md-4 offset-8 text-center">
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">Guardar</button>
+                        </div>
+                    </div>
+                </form>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="button" id="eliminarProducto">Eliminar producto</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="container">
+        <table class="table mt-3">
+            <thead>
+                <tr>
+                    <th class="col-1">ID</th>
+                    <th class="col-2">Nombre</th>
+                    <th class="col-2">Categoría</th>
+                    <th class="col-2">Precio</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    
+      <footer class="footer mt-3">
+        <div class="container">
+          <nav aria-label="Product navigation">
+            <ul class="pagination justify-content-center">
+              <li class="page-item disabled">
+                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+              </li>
+              <li class="page-item active" aria-current="page">
+                <a class="page-link" href="#">1</a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="#">Next</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </footer>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+
+        function mostrarDatosAModificar(producto) {
+            document.getElementById("modificarProductoFrame").style.display = "block";
+            document.querySelector("#modificarProductoForm #idProducto").textContent = producto.id;
+            document.querySelector("#modificarProductoForm #nombreProducto").value = producto.nombre;
+            document.querySelector("#modificarProductoForm #categoriaProducto").value = producto.categoria;
+            document.querySelector("#modificarProductoForm #precioProducto").value = producto.precio;
+        }
+
+        document.querySelector(".close-btn").addEventListener("click", function() {
+            document.getElementById("modificarProductoFrame").style.display = "none";
+        });
+
+        window.onclick = function(event) {
+            var modal = document.getElementById("modificarProductoFrame");
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
+
+        function eliminarProductoEnTabla(id){
+            let trs = document.querySelectorAll('tbody tr');
+            let elementoAEliminar = null;
+            for (let tr of trs) {
+                let tdIdProducto = tr.querySelector('td:first-child');
+                if (tdIdProducto.textContent === id) {
+                    elementoAEliminar = tr;
+                    break;
+                }
+            }
+            elementoAEliminar.remove();
+        }
+
+        function mostrarProductoEnTabla(producto){
+            let tbody = document.querySelector('tbody');
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${producto.id}</td>
+                <td>${producto.nombre}</td>
+                <td>${producto.categoria}</td>
+                <td>${producto.precio}</td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        window.onload = function() {
+            fetch('/productos')
+                .then(response => response.json())
+                .then(productos => {
+                    productos.slice(0, productos.length - 1).forEach(producto => {
+                        mostrarProductoEnTabla(producto);
+                    });
+                });
+        };
+
+        $("#buscar-producto-form").submit(function(e) {
+            e.preventDefault();
+
+            var idProducto= $("#id").val();
+
+            $.ajax({
+                type: "GET",
+                url: `http://localhost:3000/buscar-producto?id=${idProducto}`,
+                contentType: "application/json"                            
+            }).done(function(producto) {
+                let tbody = document.querySelector('tbody');
+                tbody.innerHTML = '';                
+                mostrarProductoEnTabla(producto);
+            }).fail(function(jqXHR, textStatus) {
+                alert("Request failed: " + textStatus);
+            });;
+        });
+        $("#modificarProductoBtn").click(function(e) {
+            var idProducto= $("#id").val();
+
+            $.ajax({
+                type: "GET",
+                url: `http://localhost:3000/buscar-producto?id=${idProducto}`,
+                contentType: "application/json"                            
+            }).done(function(producto) {
+                mostrarDatosAModificar(producto);
+            }).fail(function(jqXHR, textStatus) {
+                alert("Request failed: " + textStatus);
+            });;
+        });
+        $("#modificarProductoForm").submit(function(e) {
+            e.preventDefault();
+
+            let producto = {
+                id: $("#idProducto").text(),
+                nombre: $("#nombreProducto").val(),
+                categoria: $("#categoriaProducto").val(),
+                precio: $("#precioProducto").val()
+            }
+
+            $.ajax({
+                type: "PUT",
+                url: `http://localhost:3000/buscar-producto?id=${producto.id}`,
+                data: JSON.stringify(producto),
+                contentType: "application/json"                            
+            }).done(function() {
+                alert("Producto modificado con exito");
+                window.location.reload();
+            }).fail(function(jqXHR, textStatus) {
+                alert("Request failed: " + textStatus);
+            });;
+        });
+        $("#eliminarProducto").click(function(e) {
+            e.preventDefault();
+
+            var idProducto= $("#id").val();
+
+            $.ajax({
+                type: "DELETE",
+                url: `http://localhost:3000/buscar-producto?id=${idProducto}`,
+                contentType: "application/json"                            
+            }).done(function() {
+                alert("Producto eliminado con exito");
+                eliminarProductoEnTabla(idProducto);
+            }).fail(function(jqXHR, textStatus) {
+                alert("No se encontró el producto a elininar");
+            });
+        });
+    </script>
+</body>
+</html>

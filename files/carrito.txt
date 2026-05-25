@@ -1,1 +1,0 @@
-[{"usuario":"matias_404","productos":[{"idProducto":"1234","cantidad":1},{"idProducto":"1234","cantidad":1},{"idProducto":"1233","cantidad":1},{"idProducto":"2134","cantidad":1}]}]

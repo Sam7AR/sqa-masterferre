@@ -1,0 +1,1 @@
+[{"id":2,"usuario":"matias_404","productos":[{"idProducto":"444","cantidad":1},{"idProducto":"553","cantidad":1}],"estado":"solicitado","fecha":"2024-07-04T07:09:30.065Z"},{"id":3,"usuario":"matias_404","productos":[{"idProducto":"553","cantidad":1},{"idProducto":"553","cantidad":1}],"estado":"solicitado","fecha":"2024-07-04T07:39:35.429Z"}]

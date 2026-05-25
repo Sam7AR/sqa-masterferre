@@ -7,6 +7,22 @@ module.exports = class Empleado extends Persona{ //aun bajo pruebas
         this.cargo = cargo
     }
 
+    get salario() {
+        return this.salario;
+    }
+    
+    set salario(value) {
+        this.salario = value;
+    }
+    
+    get cargo() {
+        return this.cargo;
+    }
+    
+    set cargo(value) {
+        this.cargo = value;
+    }
+
     toString(){
         return `Empleado
 Nombre: ${this.nombre}

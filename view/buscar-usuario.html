@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Usuarios</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="/styles/main.css">
+        </head>
+        <style>
+            #overlay {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .form-container {
+                background: white;
+                padding: 20px;
+                border-radius: 5px;
+            }
+        </style>
+        <body>
+
+            <nav class="container navbar navbar-expand-lg navbar-light">
+                <a class="navbar-brand" href="/main">
+                  <img src="/images/logo.png" height="30" alt="Logo" />
+                </a>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                  <ul id="enlaces" class="navbar-nav">
+                    <li class="nav-item active">
+                      <a class="nav-link" href="/main">Catálogo</a>
+                    </li>
+                    <li class="nav-item">
+                      <a class="nav-link" href="/buscar-producto">Productos</a>
+                    </li>
+                    <li class="nav-item">
+                      <a class="nav-link" href="/buscar-usuario">Usuarios</a>
+                    </li>
+                    <li class="nav-item">
+                      <a class="nav-link" href="/registrar-productos">Registrar productos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/compras" class="nav-link">Compras</a>
+                    </li>
+                  </ul>
+                  <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                      <a class="nav-link" href="carrito"
+                        ><i class="fas fa-shopping-cart"></i> Carrito</a
+                      >
+                    </li>
+                    <li class="nav-item btn btn-primary">
+                        <a class="nav-link" href="/registrar-usuario">Registrar Usuario</a>
+                      </li>
+                  </ul>
+                </div>
+              </nav>
+
+              <form class="container col-md-8 offset-md-2 bg-light" id="registrar-usuario-form">
+                <div class="col-md-10 offset-md-1">
+                    <div class="row">
+                        <div class=" col-md-12 form-group">
+                            <label for="cedula">Cédula:</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                                <input type="number" class="form-control" id="cedula" name="cedula">
+                            </div>
+                        </div>                        
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 form-group">                        
+                            <input class="btn btn-primary" type="button" id="buscar" value="Buscar">                    
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <input class="btn btn-primary" type="button" id="modificar" value="Modificar">
+                        </div>
+                        <div class="col-md-4 form-group">
+                            <input class="btn btn-primary" type="button" id="eliminar" value="Eliminar">
+                        </div>
+                    </div>
+                    <div class="row card"  id="usuario-info">
+                        <div class="card-header">
+                            <strong>Información del Usuario</strong>
+                        </div>
+                        <div class="card-body">
+                            <p id="usuario-nombre"></p>
+                            <p id="usuario-apellido"></p>
+                            <p id="usuario-email"></p>
+                            <p id="usuario-nombre-usuario"></p>
+                            <p id="usuario-telefono"></p>
+                            <p id="usuario-direccion"></p>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <div id="overlay" class="p-4">
+                <form class="form-container bg-light p-3 border rounded">
+                    <h2 class="mb-3">Modificar usuario</h2>
+                    <div class="mb-3">
+                        <label for="cedula" class="form-label">Cedula:</label>
+                        <input type="text" name="cedula" id="cedula" class="form-control" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nombreModificado" class="form-label">Nombre:</label>
+                        <input type="text" name="nombre" id="nombreModificado" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="apellidoModificado" class="form-label">Apellido:</label>
+                        <input type="text" name="apellido" id="apellidoModificado" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="emailModificado" class="form-label">Email:</label>
+                        <input type="text" name="email" id="emailModificado" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="nombreUsuarioModificado" class="form-label">Nombre de usuario:</label>
+                        <input type="text" name="nombreUsuario" id="nombreUsuarioModificado" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="contraseñaModificada" class="form-label">Contraseña:</label>
+                        <input type="text" name="contraseña" id="contraseñaModificada" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="telefonoModificado" class="form-label">Telefono:</label>
+                        <input type="number" name="telefono" id="telefonoModificado" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="direccionModificada" class="form-label">Direccion:</label>
+                        <input type="text" name="direccion" id="direccionModificada" class="form-control">
+                    </div>
+                    <button type="button" id="saveChanges" class="btn btn-primary">Guardar</button>
+                    <button type="button" id="closeOverlay" class="btn btn-danger">X</button>
+                </form>
+            </div>
+
+
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+            <script>
+                function mostrarDatosUsuario(usuario) {
+                    var contenedor = document.getElementById('usuario-info');
+                    
+                    if (!contenedor) {
+                        contenedor = document.createElement('div');
+                        contenedor.id = 'usuario-info';                    
+                        var referencia = document.getElementById('regresar-inicio');
+                        referencia.parentNode.insertBefore(contenedor, referencia);
+                    } else {
+                        contenedor.innerHTML = `<div class="card-header">
+                                    <strong>Información del Usuario</strong>
+                                </div>`;
+                    }
+                    
+                    var nombreElemento = document.getElementById('usuario-nombre');
+                    if (!nombreElemento) {
+                        nombreElemento = document.createElement('p');
+                        nombreElemento.id = 'usuario-nombre';
+                        contenedor.appendChild(nombreElemento);
+                    }
+                    nombreElemento.innerHTML = `<br><strong>Nombre:</strong> ${usuario.nombre}`;
+                    
+                    var apellidoElemento = document.getElementById('usuario-apellido');
+                    if (!apellidoElemento) {
+                        apellidoElemento = document.createElement('p');
+                        apellidoElemento.id = 'usuario-apellido';
+                        contenedor.appendChild(apellidoElemento);
+                    }
+                    apellidoElemento.innerHTML = `<strong>Apellido:</strong> ${usuario.apellido}`;
+
+                    var emailElemento = document.getElementById('usuario-email');
+                    if (!emailElemento) {
+                        emailElemento = document.createElement('p');
+                        emailElemento.id = 'usuario-email';
+                        contenedor.appendChild(emailElemento);
+                    }
+                    emailElemento.innerHTML = `<strong>Email:</strong> ${usuario.email}`;
+
+                    var nombreUsuarioElemento = document.getElementById('usuario-nombre-usuario');
+                    if (!nombreUsuarioElemento) {
+                        nombreUsuarioElemento = document.createElement('p');
+                        nombreUsuarioElemento.id = 'usuario-nombre-usuario';
+                        contenedor.appendChild(nombreUsuarioElemento);
+                    }
+                    nombreUsuarioElemento.innerHTML = `<strong>Nombre de usuario:</strong> ${usuario.usuario}`;
+
+                    var telefonoElemento = document.getElementById('usuario-telefono');
+                    if (!telefonoElemento) {
+                        telefonoElemento = document.createElement('p');
+                        telefonoElemento.id = 'usuario-telefono';
+                        contenedor.appendChild(telefonoElemento);
+                    }
+                    telefonoElemento.innerHTML = `<strong>Telefono:</strong> ${usuario.telefono}`;
+
+                    var direccionElemento = document.getElementById('usuario-direccion');
+                    if (!direccionElemento) {
+                        direccionElemento = document.createElement('p');
+                        direccionElemento.id = 'usuario-direccion';
+                        contenedor.appendChild(direccionElemento);
+                    }
+                    direccionElemento.innerHTML = `<strong>Direccion:</strong> ${usuario.direccion}`;
+                }                
+
+                window.onload = function() {
+                    document.getElementById("overlay").style.display = "none";
+                };
+
+                function mostrarDatosAModificar(usuario) {
+                    document.getElementById("overlay").style.display = "block";
+                    document.querySelector("#overlay #cedula").value = usuario.cedula;
+                    document.querySelector("#overlay #nombreModificado").value = usuario.nombre;
+                    document.querySelector("#overlay #apellidoModificado").value = usuario.apellido;
+                    document.querySelector("#overlay #emailModificado").value = usuario.email;
+                    document.querySelector("#overlay #nombreUsuarioModificado").value = usuario.usuario;
+                    document.querySelector("#overlay #contraseñaModificada").value = usuario.contrasenia;
+                    document.querySelector("#overlay #telefonoModificado").value = usuario.telefono;
+                    document.querySelector("#overlay #direccionModificada").value = usuario.direccion;
+                }
+
+                window.onclick = function(event) {
+                    var modal = document.getElementById("overlay");
+                    if (event.target == modal) {
+                        modal.style.display = "none";
+                    }
+                };
+
+                document.querySelector("#closeOverlay").addEventListener("click", function() {
+                    document.getElementById("overlay").style.display = "none";
+                });
+
+                document.getElementById('saveChanges').addEventListener('click', function() {
+                    const updatedUser = {
+                        cedula: document.querySelector('#overlay #cedula').value,
+                        nombre: document.querySelector('#overlay #nombreModificado').value,
+                        apellido: document.querySelector('#overlay #apellidoModificado').value,
+                        email: document.querySelector('#overlay #emailModificado').value,
+                        usuario: document.querySelector('#overlay #nombreUsuarioModificado').value,
+                        contrasenia: document.querySelector('#overlay #contraseñaModificada').value,
+                        telefono: document.querySelector('#overlay #telefonoModificado').value,
+                        direccion: document.querySelector('#overlay #direccionModificada').value
+                    };
+
+                    // Enviar los datos actualizados al servidor
+                    fetch(`/buscar-usuario`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(updatedUser),
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error al actualizar el producto en el catálogo');
+                        }                 
+                        alert('Datos del usuario actualizados correctamente');
+                        window.location.reload();
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                    });
+                });
+
+                $("#buscar").click(function(e) {
+                    e.preventDefault();
+
+                    var cedula = $("#cedula").val();
+
+                    $.ajax({
+                        type: "GET",
+                        url: `http://localhost:3000/buscar-usuario?cedula=${cedula}`,
+                        contentType: "application/json"                            
+                    }).done(function(usuario) {
+                        if(usuario!==null)
+                            mostrarDatosUsuario(usuario);
+                    }).fail(function(jqXHR, textStatus) {
+                        alert("Request failed: " + textStatus);
+                    });
+                });
+
+                $("#modificar").click(function(e) {
+                    e.preventDefault();
+
+                    var cedula = $("#cedula").val();
+
+                    $.ajax({
+                        type: "GET",
+                        url: `http://localhost:3000/buscar-usuario?cedula=${cedula}`,
+                        contentType: "application/json"                            
+                    }).done(function(usuario) {
+                        if(usuario!==null)
+                            mostrarDatosAModificar(usuario);
+                    }).fail(function(jqXHR, textStatus) {
+                        alert("Request failed: " + textStatus);
+                    });
+                });
+
+                $("#eliminar").click(function(e) {
+                    e.preventDefault();
+
+                    var cedula = $("#cedula").val();
+
+                    $.ajax({
+                        type: "DELETE",
+                        url: `http://localhost:3000/buscar-usuario?cedula=${cedula}`,
+                        contentType: "application/json"                            
+                    }).done(function() {
+                        alert("Usuario eliminado");
+                        if(document.getElementById('usuario-info')){
+                            document.getElementById('usuario-info').remove();
+                        
+                        }
+                    }).fail(function(jqXHR, textStatus) {
+                        alert("Request failed: " + textStatus);
+                    });
+                });
+            </script>
+        </body>
+    </html>
