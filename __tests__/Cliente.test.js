@@ -21,7 +21,7 @@
  * ====================================================================
  */
 
-const Cliente = require('../classes/Cliente');
+const Cliente = require('../model/Cliente');
 
 describe('ISO 25010 — §8.4.1 Confidencialidad', () => {
 

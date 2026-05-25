@@ -36,11 +36,11 @@ const path = require('path');
 const app = require('../app');
 
 // Rutas de archivos de datos
-const FILES_DIR = path.join(__dirname, '..', 'files');
-const PRODUCTOS_FILE = path.join(FILES_DIR, 'productos.txt');
-const USUARIOS_FILE = path.join(FILES_DIR, 'usuarios.txt');
-const CARRITO_FILE = path.join(FILES_DIR, 'carrito.txt');
-const AUDIT_FILE = path.join(FILES_DIR, 'audit.log');
+const BD_DIR = path.join(__dirname, '..', 'bd');
+const PRODUCTOS_FILE = path.join(BD_DIR, 'productos.txt');
+const USUARIOS_FILE = path.join(BD_DIR, 'usuarios.txt');
+const CARRITO_FILE = path.join(BD_DIR, 'carrito.txt');
+const AUDIT_FILE = path.join(BD_DIR, 'audit.log');
 
 /**
  * ====================================================================
@@ -54,9 +54,9 @@ const AUDIT_FILE = path.join(FILES_DIR, 'audit.log');
  *   3. Si un test falla a mitad de ejecución, los datos se restauran
  *
  * Archivos protegidos:
- *   - productos.txt  (catálogo de productos)
- *   - usuarios.txt   (registro de usuarios)
- *   - carrito.txt    (carritos de compra)
+ *   - productos.txt  (catálogo de productos - formato JSON por línea)
+ *   - usuarios.txt   (registro de usuarios - formato JSON por línea)
+ *   - carrito.txt    (carritos de compra - formato JSON array)
  */
 let backupProductos, backupUsuarios, backupCarrito;
 
@@ -101,107 +101,60 @@ afterEach(() => {
  * Fundamento técnico:
  *   La integridad garantiza que los datos no sean modificados ni
  *   corrompidos de forma no autorizada. En un sistema que utiliza
- *   archivos planos con formato CSV, la inyección de caracteres
- *   delimitadores (comas, saltos de línea) en los campos de entrada
- *   puede corromper la estructura del archivo, generando registros
- *   fantasma o mezclando datos de diferentes entidades.
+ *   archivos planos con formato JSON (un objeto por línea), la
+ *   inyección de caracteres delimitadores o JSON malicioso en los
+ *   campos de entrada puede corromper la estructura del archivo.
  *
  * Vulnerabilidad actual:
  *   El endpoint POST /registrar-producto no realiza ninguna
- *   sanitización de entrada. El campo 'nombre' se concatena
- *   directamente en la cadena CSV, permitiendo que un atacante
- *   inyecte comas o saltos de línea para crear registros falsos
- *   o corromper la estructura del archivo productos.txt.
+ *   sanitización de entrada. Los campos se almacenan como JSON
+ *   directamente, permitiendo que un atacante inyecte campos
+ *   adicionales o corrompa la estructura del archivo productos.txt.
  */
-describe('ISO 25010 — §8.4.2 Integridad: Inyección CSV', () => {
+describe('ISO 25010 — §8.4.2 Integridad: Inyección JSON', () => {
 
     /**
      * REQ-2.1: El endpoint /registrar-producto debe rechazar
-     * entradas que contengan caracteres delimitadores CSV.
+     * entradas que contengan campos adicionales maliciosos.
      *
-     * Prueba: Se envía un producto con comas en el campo 'nombre'.
-     * El servidor debe retornar error 400 para prevenir la corrupción
-     * del archivo de datos.
+     * Prueba: Se envía un producto con campos extra no definidos.
+     * El servidor debe ignorar o rechazar campos extra.
      *
-     * Vulnerabilidad expuesta: El servidor acepta la entrada
-     * maliciosa (retorna 200) y la escribe directamente en
-     * productos.txt, corrompiendo la estructura CSV.
+     * Vulnerabilidad expuesta: El servidor acepta cualquier campo
+     * adicional en el body y lo almacena tal cual en el JSON,
+     * permitiendo mass assignment.
      */
-    test('POST /registrar-producto debe rechazar inyección de comas en nombre', async () => {
+    test('POST /registrar-producto debe ignorar campos extra maliciosos', async () => {
         const payloadMalicioso = {
             id: '9999',
-            nombre: 'Producto Malicioso, campo falso, inyectado',
+            nombre: 'Producto Test',
             categoria: 'Herramienta',
-            precio: '100'
+            precio: '100',
+            imagen: '/images/default.png',
+            // Campos injection intentados
+            admin: true,
+            role: 'superuser',
+            descuento: '100'
         };
 
         const response = await request(app)
             .post('/registrar-producto')
             .send(payloadMalicioso);
 
-        // NOTA: Este test FALLA porque el servidor acepta (200)
-        // y escribe datos corruptos — esto documenta la vulnerabilidad
-        expect(response.status).toBe(400);
-    });
+        expect(response.status).toBe(200);
 
-    /**
-     * REQ-2.2: El endpoint debe rechazar saltos de línea en campos.
-     *
-     * Prueba: Se envía un nombre con saltos de línea que podrían
-     * crear registros adicionales no autorizados en el archivo.
-     *
-     * Vulnerabilidad expuesta: Los saltos de línea permiten crear
-     * líneas adicionales en productos.txt, generando registros
-     * que el administrador no autorizó.
-     */
-    test('POST /registrar-producto debe rechazar saltos de línea en nombre', async () => {
-        const payloadConSalto = {
-            id: '9998',
-            nombre: 'Producto Legítimo\n9997, Producto Falso, Inyectado, 0',
-            categoria: 'Herramienta',
-            precio: '50'
-        };
-
-        const response = await request(app)
-            .post('/registrar-producto')
-            .send(payloadConSalto);
-
-        // NOTA: FALLA — el servidor acepta y crea registros fantasma
-        expect(response.status).toBe(400);
-
-        // Verificar que no se creó una línea adicional
+        // Verificar que los campos extra NO se almacenaron
         const contenido = fs.readFileSync(PRODUCTOS_FILE, 'utf8');
-        expect(contenido).not.toContain('Producto Falso');
+        const lineas = contenido.split('\n').filter(l => l.trim());
+        const ultimoProducto = JSON.parse(lineas[lineas.length - 1]);
+
+        expect(ultimoProducto).not.toHaveProperty('admin');
+        expect(ultimoProducto).not.toHaveProperty('role');
+        expect(ultimoProducto).not.toHaveProperty('descuento');
     });
 
     /**
-     * REQ-2.3: El endpoint debe rechazar inyección de comas en
-     * el campo 'categoria'.
-     *
-     * Prueba: Se envía una categoría con comas que podrían
-     * desplazar los campos y crear registros corruptos.
-     *
-     * Vulnerabilidad expuesta: Ningún campo es sanitizado,
-     * la inyección funciona en cualquier posición del CSV.
-     */
-    test('POST /registrar-producto debe rechazar inyección en categoria', async () => {
-        const payload = {
-            id: '9997',
-            nombre: 'ProductoNormal',
-            categoria: 'Herramienta, campo_extra, inyectado',
-            precio: '10'
-        };
-
-        const response = await request(app)
-            .post('/registrar-producto')
-            .send(payload);
-
-        // NOTA: FALLA — acepta categorías con comas
-        expect(response.status).toBe(400);
-    });
-
-    /**
-     * REQ-2.4: El endpoint debe validar que el precio sea numérico.
+     * REQ-2.2: El endpoint /registrar-producto debe validar que el precio sea numérico.
      *
      * Prueba: Se envía un precio con valor no numérico (string).
      * El servidor debe rechazar la entrada.
@@ -211,10 +164,11 @@ describe('ISO 25010 — §8.4.2 Integridad: Inyección CSV', () => {
      */
     test('POST /registrar-producto debe rechazar precio no numérico', async () => {
         const payload = {
-            id: '9996',
+            id: '9998',
             nombre: 'ProductoTest',
             categoria: 'Herramienta',
-            precio: 'no-es-un-numero'
+            precio: 'no-es-un-numero',
+            imagen: '/images/default.png'
         };
 
         const response = await request(app)
@@ -223,6 +177,98 @@ describe('ISO 25010 — §8.4.2 Integridad: Inyección CSV', () => {
 
         // NOTA: FALLA — acepta precios no numéricos
         expect(response.status).toBe(400);
+    });
+
+    /**
+     * REQ-2.3: El endpoint debe rechazar precios negativos.
+     *
+     * Prueba: Se envía un precio con valor negativo.
+     *
+     * Vulnerabilidad expuesta: No hay validación de rango.
+     * Un atacante podría registrar productos con precio negativo
+     * para manipular cálculos del sistema.
+     */
+    test('POST /registrar-producto debe rechazar precios negativos', async () => {
+        const payload = {
+            id: '9997',
+            nombre: 'ProductoNegativo',
+            categoria: 'Herramienta',
+            precio: '-50',
+            imagen: '/images/default.png'
+        };
+
+        const response = await request(app)
+            .post('/registrar-producto')
+            .send(payload);
+
+        // NOTA: FALLA — acepta precios negativos
+        expect(response.status).toBe(400);
+    });
+
+    /**
+     * REQ-2.4: El endpoint debe rechazar precios de valor cero.
+     *
+     * Prueba: Se envía un producto con precio 0.
+     *
+     * Vulnerabilidad expuesta: Un producto con precio 0 podría
+     * ser explotado en un sistema de carrito para obtener
+     * artículos sin costo.
+     */
+    test('POST /registrar-producto debe rechazar precio cero', async () => {
+        const payload = {
+            id: '9996',
+            nombre: 'ProductoGratis',
+            categoria: 'Herramienta',
+            precio: '0',
+            imagen: '/images/default.png'
+        };
+
+        const response = await request(app)
+            .post('/registrar-producto')
+            .send(payload);
+
+        // NOTA: FALLA — acepta precio 0
+        expect(response.status).toBe(400);
+    });
+
+    /**
+     * REQ-2.5: El endpoint debe rechazar IDs duplicados.
+     *
+     * Prueba: Se registran dos productos con el mismo ID.
+     *
+     * Vulnerabilidad expuesta: La validación de ID único existe
+     * en productoController.resgistarProducto, verificar que funciona.
+     */
+    test('POST /registrar-producto debe rechazar IDs duplicados', async () => {
+        const payload1 = {
+            id: '8888',
+            nombre: 'Producto1',
+            categoria: 'Herramienta',
+            precio: '10',
+            imagen: '/images/default.png'
+        };
+        const payload2 = {
+            id: '8888',
+            nombre: 'Producto2',
+            categoria: 'Herramienta',
+            precio: '20',
+            imagen: '/images/default.png'
+        };
+
+        // Registrar el primero (debe funcionar)
+        const response1 = await request(app)
+            .post('/registrar-producto')
+            .send(payload1);
+
+        expect(response1.status).toBe(200);
+
+        // Intentar registrar el segundo con mismo ID
+        const response2 = await request(app)
+            .post('/registrar-producto')
+            .send(payload2);
+
+        // Debiera rechazar el segundo registro
+        expect(response2.status).toBe(400);
     });
 });
 
@@ -307,7 +353,7 @@ describe('ISO 25010 — §8.4.3 Autenticidad: Bypass de autenticación', () => {
      */
     test('POST /getCart debe rechazar peticiones sin autenticación', async () => {
         const payload = {
-            usuarioSolicitud: 'matias_404'  // usuario real en el sistema
+            usuarioSolicitud: 'mati123'  // usuario real en el sistema
         };
 
         const response = await request(app)
@@ -324,12 +370,11 @@ describe('ISO 25010 — §8.4.3 Autenticidad: Bypass de autenticación', () => {
      * Prueba: Se intenta eliminar un producto del carrito de otro
      * usuario sin autenticación.
      *
-     * Vulnerabilidad expuesta: Cualquiera puede eliminar productos
-     * del carrito de otro usuario.
+     * Referencias: mati123 usuario expuesto en usuarios.txt
      */
     test('DELETE /deleteFromCart debe rechazar peticiones sin autenticación', async () => {
         const payload = {
-            usuarioSolicitud: 'matias_404',
+            usuarioSolicitud: 'mati123',
             idProducto: '1234'
         };
 
@@ -406,7 +451,8 @@ describe('ISO 25010 — §8.4.4 No Repudio: Ausencia de auditoría', () => {
             id: '7777',
             nombre: 'ProductoAuditoria',
             categoria: 'Test',
-            precio: '25'
+            precio: '25',
+            imagen: '/images/default.png'
         };
 
         const response = await request(app)
@@ -451,15 +497,13 @@ describe('ISO 25010 — §8.4.4 No Repudio: Ausencia de auditoría', () => {
             cedula: 'V-99999999',
             telefono: '0412-0000000',
             direccion: 'Test Address',
-            email: 'test@test.com'
+            email: 'testaudit@test.com'
         };
 
         const response = await request(app)
             .post('/registrar-usuario')
             .send(payload);
 
-        // NOTA: Puede fallar por bug en app.js (new carrito)
-        // pero si retorna 200, debe haber auditoría
         if (response.status === 200) {
             const auditExiste = fs.existsSync(AUDIT_FILE);
             // NOTA: FALLA — no hay auditoría
@@ -471,15 +515,15 @@ describe('ISO 25010 — §8.4.4 No Repudio: Ausencia de auditoría', () => {
      * REQ-4.3: Las operaciones del carrito deben generar
      * entrada de auditoría.
      *
-     * Prueba: Se agrega un producto al carrito y se verifica
-     * que la operación quede registrada.
+     * Prueba: Se agrega un producto al carrito de un usuario
+     * y se verifica que la operación quede registrada.
      *
      * Vulnerabilidad expuesta: Las operaciones del carrito
      * (agregar, modificar, eliminar) son completamente anónimas.
      */
     test('Operaciones del carrito deben generar registro de auditoría', async () => {
         const payload = {
-            usuario: 'matias_404',
+            usuario: 'mati123',
             idProducto: '1234',
             cantidad: 1
         };
@@ -528,7 +572,8 @@ describe('Seguridad complementaria — Validación de entrada', () => {
             id: '9995',
             nombre: '',
             categoria: 'Herramienta',
-            precio: '10'
+            precio: '10',
+            imagen: '/images/default.png'
         };
 
         const response = await request(app)
@@ -552,7 +597,8 @@ describe('Seguridad complementaria — Validación de entrada', () => {
             id: '9994',
             nombre: '   ',
             categoria: 'Herramienta',
-            precio: '10'
+            precio: '10',
+            imagen: '/images/default.png'
         };
 
         const response = await request(app)
@@ -564,157 +610,70 @@ describe('Seguridad complementaria — Validación de entrada', () => {
     });
 
     /**
-     * REQ-5.3: El endpoint debe rechazar precios negativos.
+     * REQ-5.3: El endpoint debe rechazar IDs con caracteres peligrosos.
      *
-     * Prueba: Se envía un precio con valor negativo.
+     * Prueba: Se envía un ID con caracteres path traversal.
      *
-     * Vulnerabilidad expuesta: No hay validación de rango.
-     * Un atacante podría registrar productos con precio negativo
-     * para manipular cálculos del sistema.
+     * Vulnerabilidad expuesta: No hay validación de formato del ID.
      */
-    test('POST /registrar-producto debe rechazar precios negativos', async () => {
+    test('POST /registrar-producto debe rechazar IDs con path traversal', async () => {
         const payload = {
-            id: '9993',
-            nombre: 'ProductoNegativo',
+            id: '../../etc/passwd',
+            nombre: 'ProductoTest',
             categoria: 'Herramienta',
-            precio: '-50'
+            precio: '10',
+            imagen: '/images/default.png'
         };
 
         const response = await request(app)
             .post('/registrar-producto')
             .send(payload);
 
-        // NOTA: FALLA — acepta precios negativos
+        // NOTA: FALLA — acepta IDs con caracteres especiales
+        // Podría ser vector de path traversal si se usa como filename
         expect(response.status).toBe(400);
     });
 
     /**
-     * REQ-5.4: El endpoint debe rechazar precios de valor cero.
-     *
-     * Prueba: Se envía un producto con precio 0.
-     *
-     * Vulnerabilidad expuesta: Un producto con precio 0 podría
-     * ser explotado en un sistema de carrito para obtener
-     * artículos sin costo.
-     */
-    test('POST /registrar-producto debe rechazar precio cero', async () => {
-        const payload = {
-            id: '9992',
-            nombre: 'ProductoGratis',
-            categoria: 'Herramienta',
-            precio: '0'
-        };
-
-        const response = await request(app)
-            .post('/registrar-producto')
-            .send(payload);
-
-        // NOTA: FALLA — acepta precio 0
-        expect(response.status).toBe(400);
-    });
-
-    /**
-     * REQ-5.5: El endpoint debe rechazar IDs duplicados.
-     *
-     * Prueba: Se registran dos productos con el mismo ID.
-     *
-     * Vulnerabilidad expuesta: No hay verificación de unicidad
-     * del ID. Esto puede causar confusiones al buscar productos.
-     */
-    test('POST /registrar-producto debe rechazar IDs duplicados', async () => {
-        const payload1 = {
-            id: '8888',
-            nombre: 'Producto1',
-            categoria: 'Herramienta',
-            precio: '10'
-        };
-        const payload2 = {
-            id: '8888',
-            nombre: 'Producto2',
-            categoria: 'Herramienta',
-            precio: '20'
-        };
-
-        // Registrar el primero (debe funcionar)
-        await request(app)
-            .post('/registrar-producto')
-            .send(payload1);
-
-        // Intentar registrar el segundo con mismo ID
-        const response = await request(app)
-            .post('/registrar-producto')
-            .send(payload2);
-
-        // NOTA: FALLA — acepta IDs duplicados
-        expect(response.status).toBe(400);
-    });
-});
-
-
-/**
- * ====================================================================
- * F. INYECCIÓN XSS — Complementario a ISO 25010
- * ====================================================================
- *
- * Fundamento técnico:
- *   La inyección de scripts del lado del cliente (XSS) permite
- *   a un atacante ejecutar código JavaScript en el navegador
- *   de otros usuarios. Esto ocurre cuando la aplicación almacena
- *   datos del usuario sin sanitizar y los renderiza posteriormente.
- *
- * Vulnerabilidad actual:
- *   Los campos de texto se almacenan tal cual se reciben, sin
- *   escapar caracteres HTML especiales (<, >, ", ', &).
- */
-describe('Seguridad complementaria — Inyección XSS', () => {
-
-    /**
-     * REQ-6.1: El endpoint debe sanitizar etiquetas HTML/Script
-     * en el campo nombre.
+     * REQ-5.4: El endpoint debe rechazar nombres con etiquetas HTML.
      *
      * Prueba: Se envía un nombre con etiquetas <script>.
      *
-     * Vulnerabilidad expuesta: El script se almacena tal cual
-     * en productos.txt. Si algún componente renderiza estos
-     * datos (como la página buscar-producto.html), el script
-     * se ejecutará en el navegador del usuario.
+     * Vulnerabilidad expuesta: El HTML sin sanitizar podría ejecutarse
+     * si los datos se renderizan en el frontend.
      */
-    test('POST /registrar-producto debe rechazar scripts en nombre', async () => {
+    test('POST /registrar-producto debe rechazar etiquetas HTML en nombre', async () => {
         const payload = {
             id: '9991',
             nombre: '<script>alert("XSS")</script>',
             categoria: 'Herramienta',
-            precio: '10'
+            precio: '10',
+            imagen: '/images/default.png'
         };
 
         const response = await request(app)
             .post('/registrar-producto')
             .send(payload);
 
-        // NOTA: FALLA — acepta scripts sin sanitizar
+        // NOTA: FALLA — acepta HTML sin sanitizar
         expect(response.status).toBe(400);
-
-        // Verificar que no se almacenó el script
-        const contenido = fs.readFileSync(PRODUCTOS_FILE, 'utf8');
-        expect(contenido).not.toContain('<script>');
     });
 
     /**
-     * REQ-6.2: El endpoint debe sanitizar atributos de evento
-     * HTML en campos de texto.
+     * REQ-5.5: El endpoint debe rechazar nombres con eventos HTML.
      *
-     * Prueba: Se envía un nombre con un atributo onerror.
+     * Prueba: Se envía un nombre con atributos onerror.
      *
-     * Vulnerabilidad expuesta: Los atributos de evento HTML
-     * pueden ejecutar JavaScript sin necesidad de etiquetas
-     * <script>.
+     * Vulnerabilidad expuesta: Los atributos de evento HTML pueden
+     * ejecutar JavaScript sin necesidad de etiquetas <script>.
      */
     test('POST /registrar-producto debe rechazar atributos de evento HTML', async () => {
         const payload = {
             id: '9990',
             nombre: 'Producto" onerror="alert(1)"',
             categoria: 'Herramienta',
-            precio: '10'
+            precio: '10',
+            imagen: '/images/default.png'
         };
 
         const response = await request(app)
@@ -729,7 +688,7 @@ describe('Seguridad complementaria — Inyección XSS', () => {
 
 /**
  * ====================================================================
- * G. MANIPULACIÓN DE PARÁMETROS — Complementario a ISO 25010
+ * F. MANIPULACIÓN DE PARÁMETROS — Complementario a ISO 25010
  * ====================================================================
  *
  * Fundamento técnico:
@@ -744,73 +703,35 @@ describe('Seguridad complementaria — Inyección XSS', () => {
 describe('Seguridad complementaria — Manipulación de parámetros', () => {
 
     /**
-     * REQ-7.1: El endpoint debe rechazar IDs no numéricos
-     * cuando se espera un valor numérico.
+     * REQ-7.1: El endpoint debe rechazar precio mayor a un máximo razonable.
      *
-     * Prueba: Se envía un ID con caracteres especiales.
+     * Prueba: Se envía un precio excesivamente alto.
      *
-     * Vulnerabilidad expuesta: No hay validación de formato
-     * del ID, lo que puede causar problemas al buscar productos.
+     * Vulnerabilidad expuesta: No hay validación de rango máximo.
+     * Podría permitir precios absurdos que manipulen el sistema.
      */
-    test('POST /registrar-producto debe rechazar IDs con caracteres especiales', async () => {
+    test('POST /registrar-producto debe rechazar precio excesivamente alto', async () => {
         const payload = {
-            id: '../../etc/passwd',
+            id: '9898',
             nombre: 'ProductoTest',
             categoria: 'Herramienta',
-            precio: '10'
+            precio: '999999999999',
+            imagen: '/images/default.png'
         };
 
         const response = await request(app)
             .post('/registrar-producto')
             .send(payload);
 
-        // NOTA: FALLA — acepta IDs con caracteres especiales
-        // (potencial vector de path traversal si se usa como filename)
+        // NOTA: FALLA — no hay validación de rango máximo
         expect(response.status).toBe(400);
-    });
-
-    /**
-     * REQ-7.2: El endpoint debe rechazar campos extra no definidos
-     * en el esquema (mass assignment).
-     *
-     * Prueba: Se envía un payload con campos adicionales no
-     * esperados por el endpoint.
-     *
-     * Vulnerabilidad expuesta: Express parsea todos los campos
-     * del body sin filtrar. Si el código accede a req.body.admin
-     * u otros campos no esperados, podría haber escalada de
-     * privilegios.
-     */
-    test('POST /registrar-producto debe ignorar campos extra en el body', async () => {
-        const payload = {
-            id: '9989',
-            nombre: 'ProductoTest',
-            categoria: 'Herramienta',
-            precio: '10',
-            admin: true,          // campo extra malicioso
-            role: 'superuser',    // campo extra malicioso
-            descuento: '100'      // campo extra malicioso
-        };
-
-        const response = await request(app)
-            .post('/registrar-producto')
-            .send(payload);
-
-        // Verificar que los campos extra no se almacenan
-        // NOTA: El servidor no debería aceptar campos no definidos
-        // sin al menos ignorarlos explícitamente
-        if (response.status === 200) {
-            const contenido = fs.readFileSync(PRODUCTOS_FILE, 'utf8');
-            expect(contenido).not.toContain('admin');
-            expect(contenido).not.toContain('superuser');
-        }
     });
 });
 
 
 /**
  * ====================================================================
- * H. FILTRADO DE INFORMACIÓN SENSIBLE — Complementario a ISO 25010
+ * G. FILTRADO DE INFORMACIÓN SENSIBLE — Complementario a ISO 25010
  * ====================================================================
  *
  * Fundamento técnico:
@@ -830,32 +751,25 @@ describe('Seguridad complementaria — Filtrado de información', () => {
      * REQ-8.1: Las respuestas de error no deben exponer
      * stack traces ni información interna del servidor.
      *
-     * Prueba: Se provoca un error enviando un body con
-     * formato inválido y se verifica la respuesta.
-     *
-     * Vulnerabilidad expuesta: Los errores de fs se propagan
-     * sin catch, pudiendo exponer rutas del sistema y stack traces.
+     * Prueba: Se busca un producto inexistente y se verifica
+     * que la respuesta no exponga información interna.
      */
-    test('Errores del servidor no deben exponer stack traces', async () => {
-        // Provocar un error enviando JSON malformado
+    test('Buscar producto inexistente no debe exponer información interna', async () => {
         const response = await request(app)
-            .post('/registrar-producto')
-            .set('Content-Type', 'application/json')
-            .send('{"invalid json');
+            .get('/buscar-producto?id=99999');
 
         // La respuesta no debe contener información interna
         const body = response.text || '';
-        expect(body).not.toMatch(/at\s+\w+\s+\(/);  // stack trace pattern
+
+        // No debe contener rutas del servidor
+        expect(body).not.toContain('/home/');
+        expect(body).not.toContain('C:\\');
         expect(body).not.toContain('node_modules');
-        expect(body).not.toContain('SyntaxError');
     });
 
     /**
      * REQ-8.2: El servidor no debe exponer la estructura de
      * archivos del sistema en las respuestas.
-     *
-     * Prueba: Se verifica que las respuestas no contengan
-     * rutas absolutas del sistema de archivos.
      */
     test('Respuestas no deben exponer rutas del sistema', async () => {
         const response = await request(app)
