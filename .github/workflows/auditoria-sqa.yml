@@ -39,3 +39,12 @@ jobs:
       with:
         name: reporte-auditoria-json
         path: resultados-auditoria.json
+        
+    # Paso 6: Ejecutar script de telemetría
+    - name: Enviar métricas a InfluxDB
+      env:
+        INFLUX_URL: ${{ secrets.INFLUX_URL }}
+        INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
+        INFLUX_ORG: ${{ secrets.INFLUX_ORG }}
+        INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
+      run: node enviar-metricas.js
