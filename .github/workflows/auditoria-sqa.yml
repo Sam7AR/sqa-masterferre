@@ -1,0 +1,41 @@
+name: SQA Security Audit - MasterFerre
+
+# ¿Cuándo se ejecutará esto?
+on:
+  push:
+    branches: [ "main", "master" ] # Se ejecuta al hacer push a la rama principal
+  pull_request:
+    branches: [ "main", "master" ] # También es buena práctica auditar los Pull Requests
+  workflow_dispatch: # <--- ESTA ES LA LÍNEA PARA EL BOTÓN MANUAL
+
+jobs:
+  auditoria:
+    # Máquina virtual donde se ejecutará 
+    runs-on: ubuntu-latest
+
+    steps:
+    # Paso 1: Descargar el código fuente del repositorio al servidor de GitHub
+    - name: Descargar el código fuente
+      uses: actions/checkout@v4
+
+    # Paso 2: Configurar el entorno de Node.js
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18' 
+
+    # Paso 3: Instalar las dependencias del proyecto
+    - name: Instalar dependencias
+      run: npm install
+
+    # Paso 4: Ejecutar las pruebas y exportar los resultados a JSON
+    - name: Ejecutar auditoría de seguridad (Jest)
+      run: npx jest --json --outputFile=resultados-auditoria.json
+      continue-on-error: true
+
+    # Paso 5: Guardar el JSON para poder descargarlo y verificarlo
+    - name: Guardar reporte JSON como artefacto
+      uses: actions/upload-artifact@v4
+      with:
+        name: reporte-auditoria-json
+        path: resultados-auditoria.json
