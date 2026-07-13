@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --runInBand --forceExit --testTimeout=15000",
+    "test:audit": "jest --runInBand --forceExit --testTimeout=15000 --json --outputFile=resultados-auditoria.json",
+    "start": "node app.js"
   },
   "keywords": [],
   "author": "",

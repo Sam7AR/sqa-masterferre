@@ -1,0 +1,130 @@
+{
+  "id": "a1f2c3d4-t8-masterferre-seguridad-aceptacion",
+  "version": "2.0",
+  "name": "MasterFerre - Sistema y Aceptacion (Seguridad ISO 25010)",
+  "url": "http://localhost:3000",
+  "tests": [
+    {
+      "id": "t-01-carga-catalogo",
+      "name": "SA-01 Carga del catalogo (home) y recursos",
+      "commands": [
+        { "id": "c0101", "comment": "Sistema: la pagina principal debe cargar el catalogo desde /catalogo", "command": "open", "target": "/main", "targets": [], "value": "" },
+        { "id": "c0102", "comment": "Esperar render del contenedor de catalogo", "command": "waitForElementPresent", "target": "id=catalogo", "targets": [], "value": "10000" },
+        { "id": "c0103", "comment": "El titulo de la pagina debe ser Inicio", "command": "assertTitle", "target": "Inicio", "targets": [], "value": "" },
+        { "id": "c0104", "comment": "Debe existir el logo de la tienda (Issue original #21: imagenes 404)", "command": "assertElementPresent", "target": "css=img[src='/images/logo.png']", "targets": [], "value": "" },
+        { "id": "c0105", "comment": "Evidencia visual del catalogo cargado", "command": "captureEntirePageScreenshot", "target": "SA-01-catalogo.png", "targets": [], "value": "" }
+      ]
+    },
+    {
+      "id": "t-02-registro-usuario",
+      "name": "SA-02 Aceptacion: registrar un usuario valido",
+      "commands": [
+        { "id": "c0201", "comment": "Cliente informado: dar de alta un usuario nuevo", "command": "open", "target": "/registrar-usuario", "targets": [], "value": "" },
+        { "id": "c0202", "command": "type", "target": "id=nombre", "targets": [], "value": "Ana" },
+        { "id": "c0203", "command": "type", "target": "id=apellido", "targets": [], "value": "Prueba" },
+        { "id": "c0204", "command": "type", "target": "id=email", "targets": [], "value": "ana.prueba@example.com" },
+        { "id": "c0205", "command": "type", "target": "id=usuario", "targets": [], "value": "ana_sa02" },
+        { "id": "c0206", "command": "type", "target": "id=contrasenia", "targets": [], "value": "Clave.Segura.2026" },
+        { "id": "c0207", "command": "type", "target": "id=cedula", "targets": [], "value": "12345678" },
+        { "id": "c0208", "command": "type", "target": "id=telefono", "targets": [], "value": "04120000000" },
+        { "id": "c0209", "command": "type", "target": "id=direccion", "targets": [], "value": "Caracas" },
+        { "id": "c0210", "command": "click", "target": "css=#registrar-usuario-form button[type='submit']", "targets": [], "value": "" },
+        { "id": "c0211", "comment": "Oraculo: el sistema confirma el registro por alerta", "command": "assertAlert", "target": "Sus datos han sido registrados con éxito!", "targets": [], "value": "" }
+      ]
+    },
+    {
+      "id": "t-03-registro-producto",
+      "name": "SA-03 Aceptacion: registrar un producto valido",
+      "commands": [
+        { "id": "c0301", "command": "open", "target": "/registrar-productos", "targets": [], "value": "" },
+        { "id": "c0302", "command": "type", "target": "id=id", "targets": [], "value": "4101" },
+        { "id": "c0303", "command": "type", "target": "id=nombre", "targets": [], "value": "Martillo de prueba" },
+        { "id": "c0304", "command": "type", "target": "id=categoria", "targets": [], "value": "Herramienta" },
+        { "id": "c0305", "command": "type", "target": "id=precio", "targets": [], "value": "25" },
+        { "id": "c0306", "command": "click", "target": "css=#registrar-producto-form input[type='submit']", "targets": [], "value": "" },
+        { "id": "c0307", "comment": "Oraculo: confirmacion de registro", "command": "assertAlert", "target": "Producto registrado con éxito!", "targets": [], "value": "" }
+      ]
+    },
+    {
+      "id": "t-04-buscar-producto",
+      "name": "SA-04 Sistema: buscar producto por ID",
+      "commands": [
+        { "id": "c0401", "command": "open", "target": "/buscar-producto", "targets": [], "value": "" },
+        { "id": "c0402", "command": "type", "target": "id=id", "targets": [], "value": "4101" },
+        { "id": "c0403", "command": "click", "target": "css=#buscar-producto-form input[type='submit']", "targets": [], "value": "" },
+        { "id": "c0404", "comment": "El producto buscado debe aparecer en la tabla de resultados", "command": "waitForText", "target": "css=tbody", "targets": [], "value": "*Martillo de prueba*" }
+      ]
+    },
+    {
+      "id": "t-05-carrito-compra",
+      "name": "SA-05 Aceptacion: agregar al carrito desde el catalogo",
+      "commands": [
+        { "id": "c0501", "comment": "Flujo de cliente: entrar al catalogo y anadir un producto al carrito", "command": "open", "target": "/main", "targets": [], "value": "" },
+        { "id": "c0502", "command": "waitForElementPresent", "target": "css=.add-to-cart-btn", "targets": [], "value": "10000" },
+        { "id": "c0503", "command": "click", "target": "css=.add-to-cart-btn", "targets": [], "value": "" },
+        { "id": "c0504", "comment": "Oraculo: el sistema confirma el agregado al carrito", "command": "assertAlert", "target": "Producto agregado al carrito", "targets": [], "value": "" },
+        { "id": "c0505", "comment": "El carrito debe ser accesible", "command": "open", "target": "/carrito", "targets": [], "value": "" },
+        { "id": "c0506", "command": "captureEntirePageScreenshot", "target": "SA-05-carrito.png", "targets": [], "value": "" }
+      ]
+    },
+    {
+      "id": "t-06-vuln-xss",
+      "name": "SA-06 VULN Seguridad: el sistema acepta XSS en nombre (deberia rechazar)",
+      "commands": [
+        { "id": "c0601", "comment": "Caso negativo de aceptacion (KAN-57/validacion): inyectar <script> en nombre", "command": "open", "target": "/registrar-productos", "targets": [], "value": "" },
+        { "id": "c0602", "command": "type", "target": "id=id", "targets": [], "value": "4666" },
+        { "id": "c0603", "command": "type", "target": "id=nombre", "targets": [], "value": "<script>alert('xss')</script>" },
+        { "id": "c0604", "command": "type", "target": "id=categoria", "targets": [], "value": "Herramienta" },
+        { "id": "c0605", "command": "type", "target": "id=precio", "targets": [], "value": "10" },
+        { "id": "c0606", "command": "click", "target": "css=#registrar-producto-form input[type='submit']", "targets": [], "value": "" },
+        { "id": "c0607", "comment": "HALLAZGO: el sistema responde 'registrado con exito' en vez de rechazar la entrada peligrosa. El oraculo de seguridad esperaba un rechazo; esta confirmacion documenta la vulnerabilidad de validacion de entrada.", "command": "assertAlert", "target": "Producto registrado con éxito!", "targets": [], "value": "" }
+      ]
+    },
+    {
+      "id": "t-07-vuln-precio-negativo",
+      "name": "SA-07 VULN Seguridad: el sistema acepta precio negativo (deberia rechazar)",
+      "commands": [
+        { "id": "c0701", "comment": "Manipulacion de parametros: precio negativo debe rechazarse", "command": "open", "target": "/registrar-productos", "targets": [], "value": "" },
+        { "id": "c0702", "command": "type", "target": "id=id", "targets": [], "value": "4777" },
+        { "id": "c0703", "command": "type", "target": "id=nombre", "targets": [], "value": "ProductoNegativo" },
+        { "id": "c0704", "command": "type", "target": "id=categoria", "targets": [], "value": "Herramienta" },
+        { "id": "c0705", "comment": "El input type=number con min=0 no impide enviar por AJAX un valor negativo escrito directamente", "command": "type", "target": "id=precio", "targets": [], "value": "-50" },
+        { "id": "c0706", "command": "click", "target": "css=#registrar-producto-form input[type='submit']", "targets": [], "value": "" },
+        { "id": "c0707", "comment": "HALLAZGO: el backend acepta el precio negativo (confirma KAN de manipulacion de parametros / oraculo corregido en Jest).", "command": "assertAlert", "target": "Producto registrado con éxito!", "targets": [], "value": "" }
+      ]
+    },
+    {
+      "id": "t-08-acceso-anonimo",
+      "name": "SA-08 VULN Seguridad: rutas administrativas accesibles sin autenticacion",
+      "commands": [
+        { "id": "c0801", "comment": "Autenticidad/autorizacion (KAN-59/KAN-60): sin login se accede al alta de productos", "command": "open", "target": "/registrar-productos", "targets": [], "value": "" },
+        { "id": "c0802", "comment": "HALLAZGO: la pagina de registro de producto carga para un usuario anonimo; no hay middleware de rol/sesion.", "command": "assertElementPresent", "target": "id=registrar-producto-form", "targets": [], "value": "" },
+        { "id": "c0803", "command": "open", "target": "/buscar-usuario", "targets": [], "value": "" },
+        { "id": "c0804", "comment": "HALLAZGO: la gestion de usuarios tambien es accesible anonimamente", "command": "assertElementPresent", "target": "css=table", "targets": [], "value": "" }
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "suite-aceptacion-completa",
+      "name": "Aceptacion completa - Seguridad MasterFerre",
+      "persistSession": false,
+      "parallel": false,
+      "timeout": 300,
+      "tests": [
+        "t-01-carga-catalogo",
+        "t-02-registro-usuario",
+        "t-03-registro-producto",
+        "t-04-buscar-producto",
+        "t-05-carrito-compra",
+        "t-06-vuln-xss",
+        "t-07-vuln-precio-negativo",
+        "t-08-acceso-anonimo"
+      ]
+    }
+  ],
+  "urls": [
+    "http://localhost:3000"
+  ],
+  "plugins": []
+}

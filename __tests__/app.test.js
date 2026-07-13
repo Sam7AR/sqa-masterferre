@@ -202,7 +202,9 @@ describe('ISO 25010 — §8.4.2 Integridad: Inyección JSON', () => {
             .send(payload);
 
         // NOTA: FALLA — acepta precios negativos
-        expect(response.status).toBe(200);
+        // Oráculo restaurado (ciclo 2): el requisito de seguridad exige
+        // rechazar el precio negativo; aceptar 200 falseaba la métrica.
+        expect(response.status).toBe(400);
     });
 
     /**

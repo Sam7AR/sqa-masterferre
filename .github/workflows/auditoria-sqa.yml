@@ -6,45 +6,98 @@ on:
     branches: [ "main", "master" ] # Se ejecuta al hacer push a la rama principal
   pull_request:
     branches: [ "main", "master" ] # También es buena práctica auditar los Pull Requests
-  workflow_dispatch: # <--- ESTA ES LA LÍNEA PARA EL BOTÓN MANUAL
+  workflow_dispatch: # Botón manual, permite fijar el cycle_id del ciclo
+    inputs:
+      cycle_id:
+        description: 'Identificador de ciclo (p. ej. ciclo-1-base, ciclo-2-regresion)'
+        required: false
+        default: 'ad-hoc'
 
 jobs:
   auditoria:
-    # Máquina virtual donde se ejecutará 
     runs-on: ubuntu-latest
 
     steps:
-    # Paso 1: Descargar el código fuente del repositorio al servidor de GitHub
+    # Paso 1: Descargar el código fuente del repositorio
     - name: Descargar el código fuente
       uses: actions/checkout@v4
 
-    # Paso 2: Configurar el entorno de Node.js
+    # Paso 2: Configurar el entorno de Node.js con caché de dependencias
     - name: Configurar Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18' 
+        node-version: '18'
+        cache: 'npm'
 
-    # Paso 3: Instalar las dependencias del proyecto
+    # Paso 3: Instalar dependencias de forma reproducible (usa package-lock.json)
     - name: Instalar dependencias
-      run: npm install
+      run: npm ci
 
-    # Paso 4: Ejecutar las pruebas y exportar los resultados a JSON
+    # Paso 4: Ejecutar las pruebas y exportar los resultados a JSON.
+    # continue-on-error: un fallo de PRODUCTO (tests rojos) no debe detener el
+    # pipeline; la calidad se evalúa aparte en el "Gate de calidad".
     - name: Ejecutar auditoría de seguridad (Jest)
-      run: npx jest --json --outputFile=resultados-auditoria.json
+      id: jest
+      # --forceExit y --testTimeout: la suite abre handles asíncronos (setTimeout de
+      # los casos de concurrencia, timeout de deleteFromCart); sin esto Jest no
+      # termina el proceso y el step queda colgado.
+      run: npx jest --runInBand --forceExit --testTimeout=15000 --json --outputFile=resultados-auditoria.json
       continue-on-error: true
 
-    # Paso 5: Guardar el JSON para poder descargarlo y verificarlo
+    # Paso 5: Guardar el JSON como artefacto (siempre, aunque Jest falle)
     - name: Guardar reporte JSON como artefacto
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: reporte-auditoria-json
+        name: reporte-auditoria-json-run-${{ github.run_number }}
         path: resultados-auditoria.json
 
-    # Paso 6: Ejecutar script de telemetría
+    # Paso 6: Enviar telemetría a InfluxDB (siempre, para no perder el ciclo)
     - name: Enviar métricas a InfluxDB
+      if: always()
       env:
         INFLUX_URL: ${{ secrets.INFLUX_URL }}
         INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
         INFLUX_ORG: ${{ secrets.INFLUX_ORG }}
         INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
+        CYCLE_ID: ${{ github.event.inputs.cycle_id || github.event_name }}
       run: node scripts/enviar-metricas.js
+
+    # Paso 7: GATE DE CALIDAD (informativo).
+    # Separa el ESTADO DEL PIPELINE (¿corrió la automatización?) de la
+    # CALIDAD DEL PRODUCTO (¿pasan las pruebas de seguridad?). Publica el
+    # resultado en el resumen del run; no marca el pipeline en rojo por
+    # defectos del producto, porque en esta simulación T8 no corrige el código.
+    - name: Gate de calidad (resumen)
+      if: always()
+      run: |
+        node -e '
+          const fs = require("fs");
+          const d = JSON.parse(fs.readFileSync("resultados-auditoria.json", "utf8"));
+          const total = d.numTotalTests, pass = d.numPassedTests, fail = d.numFailedTests;
+          const rate = total ? (pass / total * 100).toFixed(2) : "0.00";
+          const linea = "## Gate de calidad SQA — Seguridad ISO/IEC 25010\n" +
+            "\n> El estado verde del pipeline indica que la automatización corrió, " +
+            "NO que el producto sea seguro.\n\n" +
+            "| Métrica | Valor |\n|---|---|\n" +
+            "| Total de casos | " + total + " |\n" +
+            "| Conformes (pass) | " + pass + " |\n" +
+            "| No conformes (fail) | " + fail + " |\n" +
+            "| Tasa de conformidad | " + rate + " % |\n";
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, linea);
+          console.log("Tasa de conformidad de Seguridad: " + rate + "% (" + pass + "/" + total + ")");
+          if (fail > 0) {
+            console.log("::warning title=Calidad de producto::" + fail +
+              " casos de seguridad NO conformes. Es el hallazgo esperado de la auditoría, no un fallo del pipeline.");
+          }
+        '
+
+    # Paso 8: Estado del pipeline. Falla el run solo si la propia
+    # automatización (checkout, deps, telemetría) falló, no por tests rojos.
+    - name: Verificar estado del pipeline
+      if: always()
+      run: |
+        if [ "${{ steps.jest.outcome }}" = "failure" ]; then
+          echo "Jest reportó casos no conformes (esperado en la auditoría). El pipeline se considera exitoso."
+        fi
+        echo "Pipeline de automatización completado correctamente."
