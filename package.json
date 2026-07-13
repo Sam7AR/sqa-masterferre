@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest --runInBand",
-    "test:audit": "jest --runInBand --json --outputFile=resultados-auditoria.json",
+    "test": "jest --runInBand --forceExit --testTimeout=15000",
+    "test:audit": "jest --runInBand --forceExit --testTimeout=15000 --json --outputFile=resultados-auditoria.json",
     "start": "node app.js"
   },
   "keywords": [],

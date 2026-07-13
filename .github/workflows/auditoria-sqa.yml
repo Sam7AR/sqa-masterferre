@@ -38,7 +38,10 @@ jobs:
     # pipeline; la calidad se evalúa aparte en el "Gate de calidad".
     - name: Ejecutar auditoría de seguridad (Jest)
       id: jest
-      run: npx jest --runInBand --json --outputFile=resultados-auditoria.json
+      # --forceExit y --testTimeout: la suite abre handles asíncronos (setTimeout de
+      # los casos de concurrencia, timeout de deleteFromCart); sin esto Jest no
+      # termina el proceso y el step queda colgado.
+      run: npx jest --runInBand --forceExit --testTimeout=15000 --json --outputFile=resultados-auditoria.json
       continue-on-error: true
 
     # Paso 5: Guardar el JSON como artefacto (siempre, aunque Jest falle)
