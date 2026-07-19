@@ -50,7 +50,11 @@ jobs:
       run: |
         mkdir -p ./capturas
         npx selenium-side-runner ./selenium/masterferre-aceptacion.side --output-directory ./capturas
-
+    - name: Diagnóstico de archivos
+      if: always()
+      run: |
+        echo "Contenido de ./capturas:"
+        ls -R ./capturas
     - name: Enviar evidencias visuales y métricas a InfluxDB
       if: always()
       env:
