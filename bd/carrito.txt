@@ -1,1 +1,1 @@
-[]
+[{"usuario":"matias_404","productos":[{"idProducto":"555","cantidad":1},{"idProducto":"555","cantidad":1},{"idProducto":"555","cantidad":1},{"idProducto":"555","cantidad":1},{"idProducto":"555","cantidad":1}]}]

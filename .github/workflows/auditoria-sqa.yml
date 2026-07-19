@@ -43,7 +43,27 @@ jobs:
       # termina el proceso y el step queda colgado.
       run: npx jest --runInBand --forceExit --testTimeout=15000 --json --outputFile=resultados-auditoria.json
       continue-on-error: true
+# Paso Selenium: Ejecución, captura y envío de telemetría
+    - name: Ejecutar Selenium Aceptación
+      id: selenium
+      continue-on-error: true
+      run: |
+        mkdir -p ./capturas
+        npx selenium-side-runner ./selenium/masterferre-aceptacion.side --output-directory ./capturas
 
+    - name: Enviar evidencias visuales y métricas a InfluxDB
+      if: always()
+      env:
+        INFLUX_URL: ${{ secrets.INFLUX_URL }}
+        INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
+        INFLUX_ORG: ${{ secrets.INFLUX_ORG }}
+        INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
+        AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
+        SSH_KEY_PATH: ./aws-key.pem
+      run: |
+        echo "$AWS_SSH_KEY" > ./aws-key.pem
+        chmod 400 ./aws-key.pem
+        node scripts/enviar-metricas-selenium.js
     # Paso 5: Guardar el JSON como artefacto (siempre, aunque Jest falle)
     - name: Guardar reporte JSON como artefacto
       if: always()
