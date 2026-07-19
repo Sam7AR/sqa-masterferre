@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { XMLParser } = require('fast-xml-parser');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 
 // Variables de entorno
@@ -21,85 +20,59 @@ const writeApi = client.getWriteApi(org, bucket, 'ns');
 
 try {
     const capturasDir = './capturas';
-    
-    // Validar que exista el directorio y el XML
-    if (!fs.existsSync(capturasDir)) throw new Error(`El directorio ${capturasDir} no existe.`);
     const archivos = fs.readdirSync(capturasDir);
-    const xmlFile = archivos.find(f => f.endsWith('.xml'));
+    
+    // 1. Obtener el archivo .json más reciente (por fecha de modificación)
+    const jsonFiles = archivos
+        .filter(f => f.endsWith('.json'))
+        .map(f => ({ name: f, time: fs.statSync(path.join(capturasDir, f)).mtime.getTime() }))
+        .sort((a, b) => b.time - a.time);
 
-    if (!xmlFile) throw new Error('No se encontró el reporte XML en ./capturas');
+    if (jsonFiles.length === 0) throw new Error('No se encontraron reportes JSON en ./capturas');
+    
+    // Leemos el archivo JSON correcto
+    const data = JSON.parse(fs.readFileSync(path.join(capturasDir, jsonFiles[0].name), 'utf8'));
 
-    // Parsear el reporte XML
-    const xmlData = fs.readFileSync(path.join(capturasDir, xmlFile), 'utf8');
-    const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
-    const result = parser.parse(xmlData);
+    // 2. Procesar resultados: El runner genera un array 'testResults' (Estructura estándar Jest)
+    data.testResults.forEach(suite => {
+        // En Jest, los tests están dentro de 'assertionResults'
+        if (suite.assertionResults) {
+            suite.assertionResults.forEach(test => {
+                const status = test.status === 'passed' ? 'passed' : 'failed';
+                const duration = test.duration || 0;
 
-    let suites = result.testsuites ? result.testsuites.testsuite : result.testsuite;
-    if (!suites) throw new Error('Estructura XML inválida');
-    if (!Array.isArray(suites)) suites = [suites];
+                const punto = new Point('auditoria_aceptacion')
+                    .tag('proyecto', 'masterferre')
+                    .tag('prueba', test.title)
+                    .tag('estado', status)
+                    .intField('duracion_ms', Math.round(duration))
+                    .intField('valor_estado', status === 'passed' ? 1 : 0);
 
-    suites.forEach(suite => {
-        let tests = suite.testcase;
-        if (!tests) return;
-        if (!Array.isArray(tests)) tests = [tests];
+                // Buscar captura asociada (el runner usa el título de la prueba)
+                const testNameSafe = test.title.replace(/\s+/g, '_');
+                const captura = archivos.find(f => f.endsWith('.png') && f.includes(testNameSafe));
 
-        tests.forEach(test => {
-            const testName = test["@_name"];
-            const timeStr = test["@_time"] || "0";
-            const duration = parseFloat(timeStr) * 1000; 
-            const status = test.failure ? 'failed' : 'passed';
+                if (captura) {
+                    const localPath = path.join(capturasDir, captura);
+                    const cleanFileName = `${Date.now()}_${captura.replace(/\s+/g, '')}`;
+                    
+                    console.log(`[+] Subiendo evidencia: ${captura}...`);
+                    execSync(`scp -o StrictHostKeyChecking=no -i "${PEM_KEY}" "${localPath}" ${EC2_USER}@${EC2_IP}:${REMOTE_DIR}${cleanFileName}`);
+                    punto.stringField('captura_url', `http://${EC2_IP}/${cleanFileName}`);
+                }
 
-            const punto = new Point('auditoria_aceptacion')
-                .tag('proyecto', 'masterferre')
-                .tag('prueba', testName)
-                .tag('estado', status)
-                .intField('duracion_ms', Math.round(duration))
-                .intField('valor_estado', status === 'passed' ? 1 : 0);
+                // Si falló, capturamos el mensaje de error
+                if (status === 'failed' && test.failureMessages && test.failureMessages.length > 0) {
+                    punto.stringField('error', test.failureMessages[0].substring(0, 250));
+                }
 
-            // EXTRAER EL PREFIJO (ej: "SA-01" de "SA-01 Carga del catalogo...")
-            const matchPrefijo = testName.match(/SA-\d+/);
-            const prefijo = matchPrefijo ? matchPrefijo[0] : null;
-
-            // Buscar la captura que coincida con el prefijo o el nombre generado automáticamente
-            const captura = archivos.find(file => {
-                if (!file.endsWith('.png')) return false;
-                // Si la prueba es SA-01, busca SA-01-catalogo.png
-                if (prefijo && file.includes(prefijo)) return true;
-                // Fallback por si Selenium genera una captura de error por defecto
-                const testNameSafe = testName.replace(/\s+/g, '_');
-                return file.includes(testNameSafe);
+                writeApi.writePoint(punto);
             });
-
-            // Subir al servidor EC2 si hay evidencia visual
-            if (captura) {
-                const localPath = path.join(capturasDir, captura);
-                const cleanFileName = `${Date.now()}_${captura.replace(/\s+/g, '')}`;
-                const remotePath = `${REMOTE_DIR}${cleanFileName}`;
-
-                console.log(`[+] Encontrada evidencia para ${prefijo || testName}. Subiendo: ${captura}...`);
-                
-                execSync(`scp -o StrictHostKeyChecking=no -i "${PEM_KEY}" "${localPath}" ${EC2_USER}@${EC2_IP}:${remotePath}`);
-
-                // Inyectar URL pública en InfluxDB
-                punto.stringField('captura_url', `http://${EC2_IP}/${cleanFileName}`);
-            }
-
-            // Registrar el mensaje de error de Selenium si la prueba falla
-            if (status === 'failed' && test.failure) {
-                let failObj = Array.isArray(test.failure) ? test.failure[0] : test.failure;
-                let errorMsg = failObj["@_message"] || failObj || "Error UI desconocido";
-                punto.stringField('error', String(errorMsg).substring(0, 250));
-            }
-
-            writeApi.writePoint(punto);
-        });
+        }
     });
 
-    writeApi.close().then(() => {
-        console.log('=> Auditoría de Aceptación enviada a InfluxDB con éxito.');
-    });
-
+    writeApi.close().then(() => console.log('=> Telemetría enviada exitosamente.'));
 } catch (error) {
-    console.error('Error crítico:', error.message);
+    console.error('Error procesando el reporte:', error.message);
     process.exit(1);
 }
