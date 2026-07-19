@@ -13,7 +13,7 @@ const bucket = process.env.INFLUX_BUCKET || 'pruebas-ui';
 // Variables de tu EC2 en AWS
 const EC2_IP = '18.117.113.122';
 const EC2_USER = 'ubuntu';
-const PEM_KEY = process.env.AWS_SSH_KEY|| './tu-llave-aws.pem'; 
+const PEM_KEY = process.env.AWS_SSH_KEY; 
 const REMOTE_DIR = '/var/www/masterferre-capturas/';
 
 const client = new InfluxDB({ url, token });

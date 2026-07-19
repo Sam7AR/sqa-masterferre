@@ -59,7 +59,7 @@ jobs:
         INFLUX_ORG: ${{ secrets.INFLUX_ORG }}
         INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
         AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
-        SSH_KEY_PATH: ./aws-key.pem
+        #SSH_KEY_PATH: ./aws-key.pem
       run: |
         echo "$AWS_SSH_KEY" > ./aws-key.pem
         chmod 400 ./aws-key.pem
