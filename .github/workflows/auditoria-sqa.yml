@@ -48,13 +48,19 @@ jobs:
       id: selenium
       continue-on-error: true
       run: |
+        # 1. Levantar la aplicación en segundo plano
+        npm start &
+        
+        # 2. Esperar a que el puerto 3000 esté listo
+        # (Si no tienes wait-on, puedes instalarlo con 'npm install -D wait-on')
+        npx wait-on http://localhost:3000 --timeout 30000
+        
+        # 3. Crear carpeta y ejecutar Selenium en modo headless
         mkdir -p ./capturas
-        npx selenium-side-runner ./selenium/masterferre-aceptacion.side --output-directory ./capturas
-    - name: Diagnóstico de archivos
-      if: always()
-      run: |
-        echo "Contenido de ./capturas:"
-        ls -R ./capturas
+        npx selenium-side-runner \
+          -c "goog:chromeOptions.args=[--headless=new,--no-sandbox]" \
+          --output-directory ./capturas \
+          ./selenium/masterferre-aceptacion.side
     - name: Enviar evidencias visuales y métricas a InfluxDB
       if: always()
       env:
