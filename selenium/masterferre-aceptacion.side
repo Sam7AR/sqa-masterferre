@@ -11,8 +11,7 @@
         { "id": "c0101", "comment": "Sistema: la pagina principal debe cargar el catalogo desde /catalogo", "command": "open", "target": "/main", "targets": [], "value": "" },
         { "id": "c0102", "comment": "Esperar render del contenedor de catalogo", "command": "waitForElementPresent", "target": "id=catalogo", "targets": [], "value": "10000" },
         { "id": "c0103", "comment": "El titulo de la pagina debe ser Inicio", "command": "assertTitle", "target": "Inicio", "targets": [], "value": "" },
-        { "id": "c0104", "comment": "Debe existir el logo de la tienda (Issue original #21: imagenes 404)", "command": "assertElementPresent", "target": "css=img[src='/images/logo.png']", "targets": [], "value": "" },
-        { "id": "c0105", "comment": "Evidencia visual del catalogo cargado", "command": "captureEntirePageScreenshot", "target": "SA-01-catalogo.png", "targets": [], "value": "" }
+        { "id": "c0104", "comment": "Debe existir el logo de la tienda (Issue original #21: imagenes 404)", "command": "assertElementPresent", "target": "css=img[src='/images/logo.png']", "targets": [], "value": "" }
       ]
     },
     {
@@ -63,8 +62,7 @@
         { "id": "c0502", "command": "waitForElementPresent", "target": "css=.add-to-cart-btn", "targets": [], "value": "10000" },
         { "id": "c0503", "command": "click", "target": "css=.add-to-cart-btn", "targets": [], "value": "" },
         { "id": "c0504", "comment": "Oraculo: el sistema confirma el agregado al carrito", "command": "assertAlert", "target": "Producto agregado al carrito", "targets": [], "value": "" },
-        { "id": "c0505", "comment": "El carrito debe ser accesible", "command": "open", "target": "/carrito", "targets": [], "value": "" },
-        { "id": "c0506", "command": "captureEntirePageScreenshot", "target": "SA-05-carrito.png", "targets": [], "value": "" }
+        { "id": "c0505", "comment": "El carrito debe ser accesible", "command": "open", "target": "/carrito", "targets": [], "value": "" }
       ]
     },
     {
