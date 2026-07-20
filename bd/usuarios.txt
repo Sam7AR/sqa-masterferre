@@ -1,2 +1,0 @@
-{"nombre":"Jose","apellido":"Tablante","usuario":"mati123","contrasenia":"pepe","cedula":"12345","direccion":"xxx","telefono":"12345","condicion":"Cliente","email":"mati123@gmail.com"}
-{"nombre":"Ana","apellido":"Prueba","email":"ana.prueba@example.com","usuario":"ana_sa02","contrasenia":"Clave.Segura.2026","cedula":"12345678","telefono":"04120000000","direccion":"Caracas"}
